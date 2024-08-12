@@ -44,7 +44,6 @@ import multiprocessing as mp
 from multiprocessing import Pool
 
 import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 # tx-bridge attributes sub-processes
@@ -220,8 +219,8 @@ def fn_get_ground_dem_from_usgs_service(shp_mjr_axis_ar_buffer_lambert, b_is_fee
     # TODO - this is an override to use local WCS with geoserver - 2022.12.29
     # note that the coverage is 'cog'
     # note that format = 'geotiff' - all lower case
-    str_URL_header = r'http://localhost:8080/geoserver/tnris/wcs?'
-    str_URL_query_1 = r'SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&coverage=cog&CRS=EPSG:3857&FORMAT=geotiff'
+    # str_URL_header = r'http://localhost:8080/geoserver/tnris/wcs?'
+    # str_URL_query_1 = r'SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&coverage=cog&CRS=EPSG:3857&FORMAT=geotiff'
 
     str_bbox = str(list_int_b[0]) + "," + str(list_int_b[1]) + "," + str(list_int_b[2]) + "," + str(list_int_b[3])
 
@@ -322,6 +321,7 @@ def fn_get_ground_dem_rtree(shp_mjr_axis_ar_buffer_lambert, b_is_feet, crs_line,
                 xar_input_dem_lambert  = xar_input_dem.rio.reproject("EPSG:3857")
     
                 # read the DEM as a "Rioxarray"
+                warnings.simplefilter(action='ignore', category=UserWarning)
                 ground_dem = xar_input_dem_lambert.squeeze()
                 list_xar_dem.append(ground_dem)
             except RasterioIOError:
@@ -417,6 +417,7 @@ def fn_get_profile_gdf_on_major_axis_from_dems(shp_mjr_axis_ln,str_mjr_axis_ln_c
             gdf['h_distance'] = 0 # Intialize the variable in dataframe
 
             for index2, row2 in gdf.iterrows():
+                warnings.simplefilter(action='ignore', category=FutureWarning)
                 gdf['h_distance'].loc[index2] = gdf.geometry[0].distance(gdf.geometry[index2])
 
             gdf['elev_grnd'] = np.nan # Intialize the variable in dataframe
@@ -426,10 +427,12 @@ def fn_get_profile_gdf_on_major_axis_from_dems(shp_mjr_axis_ln,str_mjr_axis_ln_c
                 # get the value at nearest point on the rioxarray
                 arr_np_raster_val = ground_dem_local_proj.sel(x = row3['x'], y = row3['y'], method="nearest").values
                 if arr_np_raster_val.size == 1:
+                    warnings.simplefilter(action='ignore', category=FutureWarning)
                     gdf['elev_grnd'].loc[index3] = arr_np_raster_val
 
                 arr_np_deck_val = deck_dem_local_proj.sel(x = row3['x'], y = row3['y'], method="nearest").values
                 if arr_np_deck_val.size == 1:
+                    warnings.simplefilter(action='ignore', category=FutureWarning)
                     gdf['elev_deck'].loc[index3] = arr_np_deck_val
             del df
 
@@ -446,6 +449,7 @@ def fn_get_profile_gdf_on_major_axis_from_dems(shp_mjr_axis_ln,str_mjr_axis_ln_c
             gdf_newEdge['h_distance'] = 0 #Intialize the variable in dataframe
 
             for index2, row2 in gdf_newEdge.iterrows():
+                warnings.simplefilter(action='ignore', category=FutureWarning)
                 gdf_newEdge['h_distance'].loc[index2] = gdf_newEdge.geometry[0].distance(gdf_newEdge.geometry[index2]) + total_length
 
             gdf_newEdge['elev_grnd'] = np.nan
@@ -455,10 +459,12 @@ def fn_get_profile_gdf_on_major_axis_from_dems(shp_mjr_axis_ln,str_mjr_axis_ln_c
                 # get the value at nearest point on the rioxarray
                 arr_np_raster_val = ground_dem_local_proj.sel(x = row3['x'], y = row3['y'], method="nearest").values
                 if arr_np_raster_val.size == 1:
+                    warnings.simplefilter(action='ignore', category=FutureWarning)
                     gdf_newEdge['elev_grnd'].loc[index3] = arr_np_raster_val
 
                 arr_np_deck_val = deck_dem_local_proj.sel(x = row3['x'], y = row3['y'], method="nearest").values
                 if arr_np_deck_val.size == 1:
+                    warnings.simplefilter(action='ignore', category=FutureWarning)
                     gdf_newEdge['elev_deck'].loc[index3] = arr_np_deck_val
 
             gdf = pd.concat([gdf,gdf_newEdge], ignore_index=False)
@@ -561,8 +567,8 @@ def fn_center_mjr_axis_on_hull(gdf_singlerow):
         
     shp_line_offset = shp_line.parallel_offset(flt_max_value, str_side)
     
-    #gdf_singlerow.iloc[0,'geometry'] = shp_line_offset
-    gdf_singlerow.iloc[0]['geometry'] = shp_line_offset
+    gdf_singlerow.loc[0,'geometry'] = shp_line_offset
+    #gdf_singlerow.iloc[0]['geometry'] = shp_line_offset
     # TODO - there is an error here - copys df but does not change the source df - 2023.09.05
     
     return(gdf_singlerow)
@@ -743,6 +749,7 @@ def fn_attribute_mjr_axis(str_input_dir,int_class,str_input_cog_ground_dem,
             gdf_area_of_interest = gpd.read_file(str_aoi_shapefile_path)
             
             # TODO - Assumed that the aoi and 'major axis lines' are in same projection - 2022.11.08
+            gdf_area_of_interest = gdf_area_of_interest.to_crs(3857)
 
             # midpoint of the line
             flt_perct_on_line = 0.5 # midpoint on the line
@@ -837,7 +844,6 @@ def fn_attribute_mjr_axis(str_input_dir,int_class,str_input_cog_ground_dem,
                         # append the row_out to the gdf_appended_ln_w_hull_id
                         gdf_appended_ln_w_hull_id = pd.concat([gdf_appended_ln_w_hull_id, gdf_row_out])
                         
-                    #print(gdf_appended_ln_w_hull_id)
             gdf_appended_ln_w_hull_id = gdf_appended_ln_w_hull_id.reset_index(drop=True)
             
 
@@ -943,11 +949,12 @@ def fn_attribute_mjr_axis(str_input_dir,int_class,str_input_cog_ground_dem,
                 fn_add_hull_geometry(str_input_dir, int_class)
                 
                 # add the HAND rating curves to each bridge
-                str_hand_stream_ln_gpkg = dict_global_config_data['global_input_files']['str_hand_stream_ln_gpkg']
-                str_hydro_table_parquet = dict_global_config_data['global_input_files']['str_hydro_table_parquet']
+                #str_hand_stream_ln_gpkg = dict_global_config_data['global_input_files']['str_hand_stream_ln_gpkg']
+                #str_hydro_table_parquet = dict_global_config_data['global_input_files']['str_hydro_table_parquet']
                 str_segment_field_name = dict_global_config_data['global_input_files']['str_segment_field_name']
                 
-                fn_fetch_hand_rating_curves(str_input_dir,str_hand_stream_ln_gpkg,str_hydro_table_parquet,str_segment_field_name)
+                #fn_fetch_hand_rating_curves(str_input_dir,str_hand_stream_ln_gpkg,str_hydro_table_parquet,str_segment_field_name)
+                fn_fetch_hand_rating_curves(str_input_dir,str_segment_field_name)
                 
                 # plot the cross sections
                 str_flow_csv_filename = 'NONE'
@@ -956,7 +963,7 @@ def fn_attribute_mjr_axis(str_input_dir,int_class,str_input_cog_ground_dem,
                 fn_plot_cross_sections(str_input_dir,str_majr_axis_filename,str_flow_csv_filename)
                 
                 # generate the kml
-                fn_generate_kml(str_input_dir,str_input_json,dict_global_config_data)
+                #fn_generate_kml(str_input_dir,str_input_json,dict_global_config_data)
             else:
                print("  COMPLETE: No major axis lines found within area of interest ") 
     
@@ -994,7 +1001,7 @@ if __name__ == '__main__':
                         dest = "str_input_cog_ground_dem",
                         help=r'OPTIONAL: path to bare earth ground COG geotiff  Example: D:\037_georgetown\huc_12070205_bridge\dem_merge\dem_merge.tif',
                         required=False,
-                        defalut='None',
+                        default='None',
                         metavar='FILE',
                         type=str)
     
